@@ -8,10 +8,10 @@ from app.database import Base
 
 
 class Post(Base):
-    __tablename__ = "posts"
+    __tablename__ = "post"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
 
     title = Column(String(200), nullable=False)
 

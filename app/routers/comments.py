@@ -11,10 +11,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies.auth import get_current_user
 from app.schemas.comment import CommentCreate, CommentResponse
 from app.services import comment_service
 
 router = APIRouter(prefix="/posts/{post_id}/comments", tags=["Comments"])
+management_router = APIRouter(prefix="/comments", tags=["Comments"])
 
 
 @router.get("/", response_model=list[CommentResponse])
@@ -32,7 +34,7 @@ def get_comments(post_id: int, db: Session = Depends(get_db)):
 def create_comment(
     post_id: int,
     request: CommentCreate,
-    user_id: int,  # 쿼리 파라미터로 유저 id 전달 (Session 2에서 JWT 인증으로 변경 예정)
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -42,7 +44,7 @@ def create_comment(
     요청: {"content": "댓글 내용"}
     """
     try:
-        return comment_service.create_comment(db, user_id, post_id, request)
+        return comment_service.create_comment(db, current_user.id, post_id, request)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -50,7 +52,7 @@ def create_comment(
 @router.delete("/{comment_id}")
 def delete_comment(
     comment_id: int,
-    user_id: int,  # 쿼리 파라미터로 유저 id 전달 (Session 2에서 JWT 인증으로 변경 예정)
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -59,7 +61,27 @@ def delete_comment(
     DELETE /posts/3/comments/7?user_id=1
     """
     try:
-        comment_service.delete_comment(db, user_id, comment_id)
+        comment_service.delete_comment(db, current_user.id, comment_id)
+        return {"message": "댓글이 삭제되었습니다"}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+
+@management_router.delete("/{comment_id}")
+def delete_comment_by_id(
+    comment_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    댓글 삭제
+
+    DELETE /comments/7?user_id=1
+    """
+    try:
+        comment_service.delete_comment(db, current_user.id, comment_id)
         return {"message": "댓글이 삭제되었습니다"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

@@ -18,10 +18,10 @@ class SignupRequest(BaseModel):
 
     Phase 1에서는 이메일 형식까지는 검증하지 않고 문자열로 받는다.
     """
-    email: str
     username: str
-    password: str
     nickname: str
+    email: str
+    password: str
 
 
 class SignupResponse(BaseModel):
@@ -31,9 +31,10 @@ class SignupResponse(BaseModel):
     password는 절대 응답에 포함하지 않는다
     """
     id: int
-    email: str
     username: str
     nickname: str
+    email: str
+    role: str
 
 
 # ── 로그인 ──
@@ -52,6 +53,15 @@ class LoginResponse(BaseModel):
     """
     로그인 성공 시 돌려주는 데이터
 
-    Phase 1에서는 JWT 대신 user_id만 반환한다.
+    Phase 4에서는 JWT access token을 반환한다.
     """
-    user_id: int
+    access_token: str
+    token_type: str
+
+
+class MeResponse(BaseModel):
+    id: int
+    email: str
+    username: str
+    nickname: str
+    role: str

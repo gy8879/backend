@@ -22,3 +22,24 @@ def get_room_by_id(db: Session, room_id: int):
     SQL: SELECT * FROM study_rooms WHERE id = ? LIMIT 1;
     """
     return db.query(StudyRoom).filter(StudyRoom.id == room_id).first()
+
+
+def create_room(db: Session, room: StudyRoom):
+    """스터디룸 생성"""
+    db.add(room)
+    db.commit()
+    db.refresh(room)
+    return room
+
+
+def update_room(db: Session, room: StudyRoom):
+    """스터디룸 수정"""
+    db.commit()
+    db.refresh(room)
+    return room
+
+
+def delete_room(db: Session, room: StudyRoom):
+    """스터디룸 삭제"""
+    db.delete(room)
+    db.commit()

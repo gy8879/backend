@@ -12,10 +12,14 @@ Phase 1:
 """
 
 from sqlalchemy.orm import Session
+from passlib.context import CryptContext
 
 from app.models.user import User
 from app.repositories import user_repo
 from app.schemas.auth import LoginRequest, SignupRequest
+from app.services import jwt_service
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def signup(db: Session, request: SignupRequest):
@@ -33,11 +37,12 @@ def signup(db: Session, request: SignupRequest):
         raise ValueError("이미 존재하는 이메일입니다")
 
     # 2. User 모델 생성 후 DB에 저장 (비밀번호 평문 저장 — Session 2에서 해싱 추가)
+    hashed_password = pwd_context.hash(request.password)
     new_user = User(
-        email=request.email,
         username=request.username,
-        password=request.password,
         nickname=request.nickname,
+        email=request.email,
+        password=hashed_password,
     )
     return user_repo.create_user(db, new_user)
 
@@ -52,7 +57,8 @@ def login(db: Session, request: LoginRequest):
     """
     user = user_repo.get_user_by_email(db, request.email)
 
-    if not user or user.password != request.password:
+    if not user or not pwd_context.verify(request.password, user.password):
         raise ValueError("이메일 또는 비밀번호가 올바르지 않습니다")
 
-    return {"user_id": user.id}
+    token = jwt_service.create_access_token(user.id, user.role)
+    return {"access_token": token, "token_type": "bearer"}

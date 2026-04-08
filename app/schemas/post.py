@@ -3,7 +3,10 @@ Post 스키마 — 게시글 요청/응답 형태
 """
 
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel
+from app.schemas.comment import CommentResponse
+from app.schemas.post_image import PostImageResponse
 
 
 class PostCreate(BaseModel):
@@ -16,11 +19,11 @@ class PostUpdate(BaseModel):
     """
     게시글 수정 요청
 
-    str | None = None: 안 보내면 None → 수정하지 않음
+    Optional[str] = None: 안 보내면 None → 수정하지 않음
     제목만 바꾸고 싶으면 {"title": "새 제목"} 만 보내면 된다
     """
-    title: str | None = None
-    content: str | None = None
+    title: Optional[str] = None
+    content: Optional[str] = None
 
 
 class PostResponse(BaseModel):
@@ -32,3 +35,9 @@ class PostResponse(BaseModel):
     view_count: int
     created_at: datetime
     updated_at: datetime
+
+
+class PostDetailResponse(PostResponse):
+    """게시글 상세 응답 (댓글 포함)"""
+    comments: list[CommentResponse]
+    images: list[PostImageResponse]

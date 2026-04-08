@@ -8,11 +8,13 @@ Phase 1: JWT 인증 없이 user_id를 직접 쿼리 파라미터로 전달
          (Session 2에서 JWT 토큰 기반 인증으로 변경 예정)
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas.post import PostCreate, PostUpdate, PostResponse
+from app.dependencies.auth import get_current_user
+from app.schemas.post import PostCreate, PostUpdate, PostResponse, PostDetailResponse
+from app.schemas.post_image import PostImageResponse
 from app.services import post_service
 from app.repositories import like_repo
 from app.models.like import Like
@@ -31,7 +33,7 @@ def get_posts(db: Session = Depends(get_db)):
     return post_service.get_posts(db)
 
 
-@router.get("/{post_id}", response_model=PostResponse)
+@router.get("/{post_id}", response_model=PostDetailResponse)
 def get_post(post_id: int, db: Session = Depends(get_db)):
     """
     게시글 상세 조회 (조회수 +1)
@@ -48,7 +50,7 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=PostResponse)
 def create_post(
     request: PostCreate,
-    user_id: int,  # 쿼리 파라미터로 유저 id 전달 (Session 2에서 JWT 인증으로 변경 예정)
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -57,14 +59,14 @@ def create_post(
     POST /posts?user_id=1
     요청: {"title": "...", "content": "..."}
     """
-    return post_service.create_post(db, user_id, request)
+    return post_service.create_post(db, current_user.id, request)
 
 
 @router.patch("/{post_id}", response_model=PostResponse)
 def update_post(
     post_id: int,
     request: PostUpdate,
-    user_id: int,  # 쿼리 파라미터로 유저 id 전달 (Session 2에서 JWT 인증으로 변경 예정)
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -74,7 +76,7 @@ def update_post(
     요청: {"title": "새 제목"} (바꿀 필드만 보내면 된다)
     """
     try:
-        return post_service.update_post(db, user_id, post_id, request)
+        return post_service.update_post(db, current_user.id, post_id, request)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except PermissionError as e:
@@ -84,7 +86,7 @@ def update_post(
 @router.delete("/{post_id}")
 def delete_post(
     post_id: int,
-    user_id: int,  # 쿼리 파라미터로 유저 id 전달 (Session 2에서 JWT 인증으로 변경 예정)
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -93,7 +95,7 @@ def delete_post(
     DELETE /posts/3?user_id=1
     """
     try:
-        post_service.delete_post(db, user_id, post_id)
+        post_service.delete_post(db, current_user.id, post_id)
         return {"message": "게시글이 삭제되었습니다"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -106,7 +108,7 @@ def delete_post(
 @router.post("/{post_id}/like")
 def toggle_like(
     post_id: int,
-    user_id: int,  # 쿼리 파라미터로 유저 id 전달 (Session 2에서 JWT 인증으로 변경 예정)
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -116,14 +118,57 @@ def toggle_like(
     이미 좋아요 했으면 -> 취소
     아직 안 했으면 -> 좋아요
     """
-    existing = like_repo.get_like(db, user_id, post_id)
+    existing = like_repo.get_like(db, current_user.id, post_id)
     if existing:
         like_repo.delete_like(db, existing)
         message = "좋아요를 취소했습니다"
     else:
-        new_like = Like(user_id=user_id, post_id=post_id)
+        new_like = Like(user_id=current_user.id, post_id=post_id)
         like_repo.create_like(db, new_like)
         message = "좋아요를 눌렀습니다"
 
     count = like_repo.get_like_count(db, post_id)
     return {"message": message, "like_count": count}
+
+
+@router.post("/{post_id}/images", response_model=PostImageResponse)
+async def upload_post_image(
+    post_id: int,
+    current_user=Depends(get_current_user),
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """게시글 이미지 업로드 (본인만)"""
+    try:
+        file_bytes = await image.read()
+        if not file_bytes:
+            raise HTTPException(status_code=400, detail="빈 파일은 업로드할 수 없습니다")
+        return post_service.upload_post_image(
+            db=db,
+            user_id=current_user.id,
+            post_id=post_id,
+            file_bytes=file_bytes,
+            filename=image.filename or "upload.bin",
+            content_type=image.content_type,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+
+@router.delete("/{post_id}/images/{image_id}")
+def delete_post_image(
+    post_id: int,
+    image_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """게시글 이미지 삭제 (본인만)"""
+    try:
+        post_service.delete_post_image(db, current_user.id, post_id, image_id)
+        return {"message": "이미지가 삭제되었습니다"}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))

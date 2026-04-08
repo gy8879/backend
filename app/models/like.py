@@ -11,7 +11,7 @@ from app.database import Base
 
 
 class Like(Base):
-    __tablename__ = "likes"
+    __tablename__ = "like"
 
     # UniqueConstraint를 __table_args__에 넣는다
     # → (user_id, post_id) 조합이 중복되면 DB가 에러를 낸다
@@ -21,6 +21,6 @@ class Like(Base):
     )
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
+    post_id = Column(Integer, ForeignKey("post.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

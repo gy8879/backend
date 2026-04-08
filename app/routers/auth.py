@@ -12,9 +12,11 @@ from app.database import get_db
 from app.schemas.auth import (
     LoginRequest,
     LoginResponse,
+    MeResponse,
     SignupRequest,
     SignupResponse,
 )
+from app.dependencies.auth import get_current_user
 from app.services import auth_service
 
 # ── 라우터 생성 ──
@@ -61,3 +63,8 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         return auth_service.login(db, request)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
+
+
+@router.get("/me", response_model=MeResponse)
+def me(current_user=Depends(get_current_user)):
+    return current_user

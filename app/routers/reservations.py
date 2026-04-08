@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies.auth import get_current_user
 from app.schemas.reservation import ReservationCreate, ReservationResponse
 from app.services import reservation_service
 
@@ -29,23 +30,23 @@ def get_room_reservations(
     return reservation_service.get_reservations_by_room(db, room_id)
 
 
-@router.get("/my", response_model=list[ReservationResponse])
+@router.get("/me", response_model=list[ReservationResponse])
 def get_my_reservations(
-    user_id: int,  # 쿼리 파라미터로 유저 id 전달 (Session 2에서 JWT 인증으로 변경 예정)
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     내 예약 목록
 
-    GET /reservations/my?user_id=1
+    GET /reservations/me?user_id=1
     """
-    return reservation_service.get_my_reservations(db, user_id)
+    return reservation_service.get_my_reservations(db, current_user.id)
 
 
 @router.post("/", response_model=ReservationResponse)
 def create_reservation(
     request: ReservationCreate,
-    user_id: int,  # 쿼리 파라미터로 유저 id 전달 (Session 2에서 JWT 인증으로 변경 예정)
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -55,7 +56,7 @@ def create_reservation(
     요청: {"room_id": 1, "start_time": "2026-04-02T10:00:00", "end_time": "2026-04-02T12:00:00"}
     """
     try:
-        return reservation_service.create_reservation(db, user_id, request)
+        return reservation_service.create_reservation(db, current_user.id, request)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -63,7 +64,7 @@ def create_reservation(
 @router.delete("/{reservation_id}")
 def cancel_reservation(
     reservation_id: int,
-    user_id: int,  # 쿼리 파라미터로 유저 id 전달 (Session 2에서 JWT 인증으로 변경 예정)
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -72,7 +73,7 @@ def cancel_reservation(
     DELETE /reservations/5?user_id=1
     """
     try:
-        reservation_service.cancel_reservation(db, user_id, reservation_id)
+        reservation_service.cancel_reservation(db, current_user.id, reservation_id)
         return {"message": "예약이 취소되었습니다"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

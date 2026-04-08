@@ -21,7 +21,7 @@ class User(Base):
 
     # 이 클래스가 어떤 테이블에 매핑되는지 지정
     # 이걸 안 쓰면 SQLAlchemy가 어떤 테이블인지 모른다
-    __tablename__ = "users"
+    __tablename__ = "user"
 
     # ── 컬럼 정의 ──
     # Column(타입, 옵션) 형태로 쓴다
@@ -34,14 +34,10 @@ class User(Base):
     # String(50): 최대 50자까지 저장 가능 (VARCHAR(50))
     # nullable=False: 빈 값(NULL) 허용 안 함 → 반드시 입력해야 함
     username = Column(String(50), nullable=False)
-
-    # String(255): 비밀번호는 해싱하면 길어지니까 넉넉하게
-    password = Column(String(255), nullable=False)
-
-    # unique=True: 같은 이메일로 두 번 가입 불가
-    email = Column(String(255), unique=True, nullable=False)
-
     nickname = Column(String(50), nullable=False)
+    password = Column(String(255), nullable=False)
+    email = Column(String(255), unique=True, nullable=False)
+    role = Column(String(20), nullable=False, server_default="user")
 
     # DateTime(timezone=True): 시간대 정보 포함 (TIMESTAMPTZ)
     # server_default=func.now(): DB에서 INSERT할 때 자동으로 현재 시각 입력

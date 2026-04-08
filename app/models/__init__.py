@@ -17,3 +17,7 @@ from app.models.reservation import Reservation
 from app.models.post import Post
 from app.models.comment import Comment
 from app.models.like import Like
+from app.models.post_image import PostImage
+from app.models.room_setting import RoomSetting
+from app.models.study_group import StudyGroup
+from app.models.application import Application

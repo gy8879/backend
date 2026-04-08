@@ -27,19 +27,7 @@ def get_reservations_by_user(db: Session, user_id: int):
 
 
 def get_overlapping_reservation(db: Session, room_id: int, start_time: datetime, end_time: datetime):
-    """
-    시간 겹침 체크 — 같은 방에 겹치는 예약이 있는지 조회
-
-    겹치는 조건: 기존 예약의 시작 < 새 예약의 끝 AND 기존 예약의 끝 > 새 예약의 시작
-    예: 기존 10:00~12:00, 새로 11:00~13:00 → 겹침!
-
-    and_(): 여러 조건을 AND로 묶는다
-
-    SQL: SELECT * FROM reservations
-         WHERE room_id = ?
-         AND start_time < ? AND end_time > ?
-         LIMIT 1;
-    """
+    """같은 룸에서 겹치는 예약 1건 조회"""
     return db.query(Reservation).filter(
         and_(
             Reservation.room_id == room_id,
@@ -47,6 +35,17 @@ def get_overlapping_reservation(db: Session, room_id: int, start_time: datetime,
             Reservation.end_time > start_time,
         )
     ).first()
+
+
+def get_overlapping_reservations(db: Session, room_id: int, start_time: datetime, end_time: datetime):
+    """같은 룸에서 겹치는 모든 예약 내역 조회"""
+    return db.query(Reservation).filter(
+        and_(
+            Reservation.room_id == room_id,
+            Reservation.start_time < end_time,
+            Reservation.end_time > start_time,
+        )
+    ).all()
 
 
 def create_reservation(db: Session, reservation: Reservation):
